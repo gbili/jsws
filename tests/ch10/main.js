@@ -231,9 +231,23 @@ class Task {
     }
 
     // ----- Monad (Task a)
+    // Chain takes a function fn which returns a functor. Chain will return a new Task, whose fork will call the former Task's fork with a different resolver
+    // the resolver takes the data argument. This data argument is passed to the function fn passed to chain. And this
+    // chain (a) -> Task (b -> c) (d -> ())
     chain(fn) {
         return new Task((reject, resolve) => this.fork(reject, x => fn(x).fork(reject, resolve)));
     }
+
+    // Resolver: a function called by task.fork on success. Resolve takes the results as input.
+    // Rejecter: a function called by task.fork on failure.
+    // Task: an object with a fork property
+    // Task.of: input x. return a new task whose fork method calls its resolver param with the x as input.
+    // task.fork: 
+    //      from .of: a function accepting two parameters (reject, resolve). Reject is not used in the function. resolve parameter is called with the x parameter passed to Task.of(x)
+    //      from ._constructor: a function accepting two parameters (reject, resolve). Reject parameter should be called by the function on fail, and resolve on success. Reolsve and reject are functions accepting the result as parameter.
+    // task.map: Takes a function fn as parameter. Returns a new Task, whose fork is altered. The new fork will not only accept a resolver parameter with this resolver parameter will be composed after the fn callback.
+    // task.chain: takes a function fn as input. Returns a new task with a 
+
 
     join() {
         return this.chain(identity);
@@ -325,7 +339,11 @@ console.log(t.fork(afterTask1Rejects, afterTask1Completes));
 const tb = Task.of(renderPage).ap(Http.get('/destinations'));
 (new Task((_, resolve) => resolve(renderPage))).ap(Http.get('/destinations'));
 (new Task((_, resolve) => resolve(renderPage))).ap(new Task((reject, resolve) => { setTimeout(_ => resolve('/destinations'), 1000); }));
-(new Task((_, resolve) => resolve(renderPage))).chain(fn => (new Task((reject, resolve) => { setTimeout(_ => resolve('/destinations'), 1000); })).map(fn));
+(new Task((_, resolve) => resolve(renderPage))).chain(
+    fn => (
+        new Task((reject, resolve) => { setTimeout(_ => resolve('/destinations'), 1000); })
+    ).map(fn)
+);
 new Task((reject0, resolve0) => (
     (new Task((_, resolve1) => resolve1(renderPage)))
         .fork(
